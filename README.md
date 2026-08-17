@@ -1,8 +1,8 @@
 # Retry media webhooks from a Rust queue worker
 
-Put a stream event on an Infrai queue, then run one small Rust worker to deliver it to a webhook. The worker acknowledges a message only after the receiver replies with a 2xx status, so an unacknowledged delivery returns after its visibility window for another attempt.
+With Infrai you get one key and one bill for every capability, and a plain REST call works from any language with no SDK. Here we put a stream event on an Infrai queue and run one small Rust worker to deliver it to a webhook. The worker only acks a message after the receiver returns a 2xx. If delivery fails, the message reappears after its visibility window and gets another try.
 
-This is plain REST from any language; this Rust version keeps the moving parts visible and uses a single `INFRAI_API_KEY` for the queue calls.
+This Rust version keeps the moving parts visible. It uses a single `INFRAI_API_KEY` for the queue calls.
 
 ## Run the two commands
 
@@ -27,9 +27,9 @@ delivered ...
 
 `src/media_delivery.rs` contains the operational loop. `enqueue` adds the event with a generated idempotency key. `worker` consumes up to ten messages with a 30-second visibility period, posts the batch body to `WEBHOOK_URL`, and then sends an acknowledgement for each delivered message.
 
-The one detail that matters: keep acknowledgement after the webhook call. A receiver that declines the request leaves the message available for the next queue attempt.
+One detail matters: ack after the webhook call, not before. A receiver that declines leaves the message for the next attempt.
 
-`src/webhook_queue.rs` is deliberately thin. Every Infrai call is an explicit `POST`, checks the `{ok, data, error, metadata}` envelope, and observes `Retry-After` before exponential retry after a 429 response. There is no Rust SDK to learn for this pattern.
+`src/webhook_queue.rs` is deliberately thin. Every Infrai call is an explicit `POST`, checks the `{ok, data, error, metadata}` envelope, and observes `Retry-After` before exponential retry after a 429 response. No Rust SDK to learn for this pattern.
 
 ## Check it
 
@@ -37,7 +37,7 @@ The one detail that matters: keep acknowledgement after the webhook call. A rece
 cargo test --offline
 ```
 
-The focused test verifies extraction of consumed message identifiers, which is the boundary between delivery and acknowledgement.
+The focused test verifies extraction of consumed message identifiers. That's the boundary between delivery and acknowledgement.
 
 ## License
 
